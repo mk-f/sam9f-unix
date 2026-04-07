@@ -33,5 +33,6 @@ UPDATE=\
 	${OFILES:%.$O=%.c}\
 
 <$PLAN9/src/mkone
+CFLAGS=$CFLAGS -Wno-error=implicit-int -fcommon
 address.$O cmd.$O parse.$O xec.$O unix.$O:	parse.h
 
