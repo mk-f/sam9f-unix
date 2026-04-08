@@ -55,6 +55,7 @@ char *hname[] = {
 	[Hack]		"Hack",
 	[Hexit]		"Hexit",
 	[Hplumb]	"Hplumb",
+	[Hmenucmd]	"Hmenucmd",
 };
 
 char *tname[] = {
@@ -82,6 +83,8 @@ char *tname[] = {
 	[Tack]		"Tack",
 	[Texit]		"Texit",
 	[Tplumb]	"Tplumb",
+	[Tmenucmd]	"Tmenucmd",
+	[Tmenucmdsend]	"Tmenucmdsend",
 };
 
 void
@@ -568,6 +571,22 @@ inmesg(Tmesg type)
 		plumbfree(pm);
 		break;
 
+	case Tmenucmd:
+		dprint((char*)inp);
+		break;
+
+	case Tmenucmdsend:
+		termlocked++;
+		str = tmpcstr((char*)inp);
+		Straddc(str, '\n');
+		loginsert(cmd, cmd->b.nc, str->s, str->n);
+		freetmpstr(str);
+		fileupdate(cmd, FALSE, TRUE);
+		cmd->dot.r.p1 = cmd->dot.r.p2 = cmd->b.nc;
+		telldot(cmd);
+		termcommand();
+		break;
+
 	case Texit:
 		exits(0);
 	}
@@ -619,7 +638,7 @@ vlong
 invlong(void)
 {
 	vlong v;
-	
+
 	v = (inp[7]<<24) | (inp[6]<<16) | (inp[5]<<8) | inp[4];
 	v = (v<<16) | (inp[3]<<8) | inp[2];
 	v = (v<<16) | (inp[1]<<8) | inp[0];
@@ -782,7 +801,7 @@ void
 outshort(int s)
 {
 	*outp++ = s;
-	*outp++ = s>>8; 
+	*outp++ = s>>8;
 }
 
 void

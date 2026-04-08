@@ -317,7 +317,7 @@ String	*tmprstr(Rune*, int);
 void	freetmpstr(String*);
 void	termcommand(void);
 void	termwrite(char*);
-File	*tofile(String*);
+File	*tofile(String*, int);
 void	trytoclose(File*);
 void	trytoquit(void);
 int	undo(int);

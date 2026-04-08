@@ -31,11 +31,12 @@ int	spacesindent;
 void
 threadmain(int argc, char *argv[])
 {
-	int i, got, nclick, scr, chord;
+	int i, got, nclick, scr, chord, noTt;
 	Text *t;
 	Rectangle r;
 	Flayer *nwhich;
-	ulong p;
+
+	rfork(RFENVG|RFNAMEG);
 
 	getscreen(argc, argv);
 	iconinit();
@@ -54,6 +55,7 @@ threadmain(int argc, char *argv[])
 	outTs(Tversion, VERSION);
 	startnewfile(Tstartcmdfile, &cmd);
 
+	noTt = 0;
 	got = 0;
 	chord = 0;
 	for(;;got = waitforio()){
@@ -90,6 +92,9 @@ threadmain(int argc, char *argv[])
 				t = (Text *)which->user1;
 				if(!t->lock){
 					int w = which-t->l;
+					/* fire doubleclick timer */
+					if(chord&6)
+						noTt = 1;
 					if(chord&2){
 						cut(t, w, 1, 1);
 						chord &= ~2;
@@ -99,24 +104,32 @@ threadmain(int argc, char *argv[])
 						chord &= ~4;
 					}
 				}
-			}else if(mousep->buttons&(1|8)){
+			}else if(mousep->buttons&(1|8) || mousep->buttons&((1|8)<<5)){
 				if(scr)
 					scroll(which, (mousep->buttons&8) ? 4 : 1);
 				else if(nwhich && nwhich!=which)
 					current(nwhich);
-				else{
-					t=(Text *)which->user1;
-					nclick = flselect(which, &p);
-					if(nclick > 0){
-						if(nclick > 1)
-							outTsl(Ttclick, t->tag, p);
-						else
-							outTsl(Tdclick, t->tag, p);
-						t->lock++;
-					}else if(t!=&cmd)
-						outcmd();
-					if(mousep->buttons&1)
-						chord = mousep->buttons;
+				else if(nwhich && ptinrect(mousep->xy, which->f.r)){
+					if(mousep->buttons&((1|8)<<5)) /* shifted */
+						extendsel(which);
+					else{
+						t = which->user1;
+						if(noTt == 1){
+							which->click -= Clicktime;
+							noTt =0;
+						}
+						nclick = flselect(which);
+						if(nclick > 0){
+							if(nclick > 1)
+								outTsl(Ttclick, t->tag, sel);
+							else
+								outTsl(Tdclick, t->tag, sel);
+							t->lock++;
+						}else if(t!=&cmd)
+							outcmd();
+						if(mousep->buttons&1)
+							chord = mousep->buttons;
+					}
 				}
 			}else if((mousep->buttons&2) && which){
 				if(scr)
@@ -134,6 +147,21 @@ threadmain(int argc, char *argv[])
 	}
 }
 
+void
+extendsel(Flayer *l)
+{
+	ulong p;
+	fprint(2, "in extendsel\n");
+	do{
+		p = l->origin+frcharofpt(&l->f, mousep->xy);
+		if(p < sel)
+			flsetselect(l, p, sel);
+		else
+			flsetselect(l, sel, p);
+		if(readmouse(mousectl) < 0)
+			panic("mouse");
+	}while(mousep->buttons & (1|8));
+}
 
 void
 resize(void)
@@ -237,7 +265,8 @@ void
 buttons(int updown)
 {
 	while(((mousep->buttons&7)!=0) != updown)
-		getmouse();
+		if(readmouse(mousectl) < 0)
+			panic("mouse");
 }
 
 int
@@ -309,27 +338,14 @@ paste(Text *t, int w)
 		outTsl(Tpaste, t->tag, t->l[w].p0);
 	}
 }
-
-void
-scrorigin(Flayer *l, int but, long p0)
+/*
+// isdigitrune not in p9p
+int
+alnum(int c)
 {
-	Text *t=(Text *)l->user1;
-
-	if(t->tag == Untagged)
-		return;
-
-	switch(but){
-	case 1:
-		outTsll(Torigin, t->tag, l->origin, p0);
-		break;
-	case 2:
-		outTsll(Torigin, t->tag, p0, 1L);
-		break;
-	case 3:
-		horigin(t->tag,p0);
-	}
+	return isalpharune(c) || isdigitrune(c);
 }
-
+*/
 int
 alnum(int c)
 {
@@ -413,40 +429,25 @@ ctlu(Rasp *r, long o, long p)
 	return p>=o? p : o;
 }
 
-int
-center(Flayer *l, long a)
+void
+center(Flayer *l, long a, int n)
 {
 	Text *t;
 
 	t = l->user1;
-	if(!t->lock && (a<l->origin || l->origin+l->f.nchars<a)){
-		if(a > t->rasp.nrunes)
-			a = t->rasp.nrunes;
-		outTsll(Torigin, t->tag, a, 2L);
-		return 1;
-	}
-	return 0;
-}
+	if(t->lock || t->tag == Untagged)
+		return;
 
-int
-onethird(Flayer *l, long a)
-{
-	Text *t;
-	Rectangle s;
-	long lines;
+	if(n > 0)
+		a += frcharofpt(&l->f, Pt(l->scroll.max.x, l->scroll.min.y + n * l->f.font->height));
+	if(a > t->rasp.nrunes)
+		a = t->rasp.nrunes;
 
-	t = l->user1;
-	if(!t->lock && (a<l->origin || l->origin+l->f.nchars<a)){
-		if(a > t->rasp.nrunes)
-			a = t->rasp.nrunes;
-		s = insetrect(l->scroll, 1);
-		lines = ((s.max.y-s.min.y)/l->f.font->height+1)/3;
-		if (lines < 2)
-			lines = 2;
-		outTsll(Torigin, t->tag, a, lines);
-		return 1;
-	}
-	return 0;
+	if(n > 0)
+		/* we can center locally */
+		horigin(t->tag, a);
+	else
+		outTsll(Torigin, t->tag, a, -n+1);
 }
 
 void
@@ -456,7 +457,7 @@ flushtyping(int clearesc)
 	ulong n;
 
 	if(clearesc)
-		typeesc = -1;	
+		typeesc = -1;
 	if(typestart == typeend) {
 		modified = 0;
 		return;
@@ -489,6 +490,9 @@ int
 nontypingkey(int c)
 {
 	switch(c){
+	case Kalt:
+	case Kctl:
+	case Kshift:
 	case Kup:
 	case Kdown:
 	case Khome:
@@ -501,6 +505,7 @@ nontypingkey(int c)
 	case Kenq:
 	case Kstx:
 	case Kbel:
+	case -1:
 		return 1;
 	}
 	return 0;
@@ -514,7 +519,7 @@ type(Flayer *l, int res)	/* what a bloody mess this is */
 	Rune buf[100];
 	Rune *p = buf;
 	int c, backspacing;
-	long a, a0;
+	long a;
 	int scrollkey;
 
 	scrollkey = 0;
@@ -562,7 +567,7 @@ type(Flayer *l, int res)	/* what a bloody mess this is */
 					break;
 			}
 		}
-		if(c == '\n' || p >= buf+sizeof(buf)/sizeof(buf[0]))
+		if(c == '\n' || p >= buf+nelem(buf))
 			break;
 	}
 	if(p > buf){
@@ -579,38 +584,50 @@ type(Flayer *l, int res)	/* what a bloody mess this is */
 		typeend = a;
 		if(c=='\n' || typeend-typestart>100)
 			flushtyping(0);
-		onethird(l, a);
+		if(a < l->origin || a > l->origin+l->f.nchars)
+			center(l, a, -(l->f.maxlines/3));
 	}
-	if(c==Kdown || c==Kpgdown){
+	if(c==Kdown){
 		flushtyping(0);
-		center(l, l->origin+l->f.nchars+1);
+		//not doable in p9p, can't get shift state
+		//center(l, l->origin, shifted? 1: l->f.maxlines/3);
+		center(l, l->origin, l->f.maxlines/3);
+	}else if(c==Kpgdown){
+		flushtyping(0);
+		center(l, l->origin, l->f.maxlines);
 		/* backspacing immediately after outcmd(): sorry */
-	}else if(c==Kup || c==Kpgup){
+	}else if(c==Kup){
 		flushtyping(0);
-		a0 = l->origin-l->f.nchars;
-		if(a0 < 0)
-			a0 = 0;
-		center(l, a0);
-	}else if(c == Kright){
+		//not doable in p9p, can't get shift state
+		//center(l, l->origin, shifted? -1: -(l->f.maxlines/3));
+		center(l, l->origin, -(l->f.maxlines/3));
+	}else if(c==Kpgup){
 		flushtyping(0);
-		a0 = l->p0;
-		if(a0 < t->rasp.nrunes)
-			a0++;
-		flsetselect(l, a0, a0);
-		center(l, a0);
+		center(l, l->origin, -l->f.maxlines);
 	}else if(c == Kleft){
 		flushtyping(0);
-		a0 = l->p0;
-		if(a0 > 0)
-			a0--;
-		flsetselect(l, a0, a0);
-		center(l, a0);
-	}else if(c == Khome){
+		if(l->p0 > 0){
+			l->p0--;
+			flsetselect(l, l->p0, l->p0);
+			if(l->p0 < l->origin || l->p0 > l->origin+l->f.nchars)
+				center(l, l->p0, 0);
+		}
+	}else if(c == Kright){
 		flushtyping(0);
-		center(l, 0);
+		if(l->p1 < t->rasp.nrunes){
+			l->p1++;
+			if(l->p1 == l->origin+l->f.nchars && l->p1 != t->rasp.nrunes)
+				center(l, l->origin, 1);
+			else if(l->p1 < l->origin || l->p1 > l->origin+l->f.nchars)
+				center(l, l->p1, 0);
+			flsetselect(l, l->p1, l->p1);
+		}
+ 	}else if(c == Khome){
+		flushtyping(0);
+		center(l, 0, 0);
 	}else if(c == Kend){
 		flushtyping(0);
-		center(l, t->rasp.nrunes);
+		center(l, t->rasp.nrunes, -(l->f.maxlines/3));
 	}else if(c == Ksoh || c == Kenq){
 		flushtyping(1);
 		if(c == Ksoh)
@@ -672,23 +689,23 @@ type(Flayer *l, int res)	/* what a bloody mess this is */
 		flushtyping(0);
 		a = t->rasp.nrunes;
 		flsetselect(l, a, a);
-		center(l, a);
-	}else if(c == Kbel){
-		int i;
-		if(work == nil)
-			return;
-		if(which != work){
-			current(work);
-			return;
-		}
-		t = (Text*)work->user1;
-		l = &t->l[t->front];
-		for(i=t->front; t->nwin>1 && (i = (i+1)%NL) != t->front; )
-			if(t->l[i].textfn != 0){
-				l = &t->l[i];
-				break;
-			}
-		current(l);
+		center(l, a, 0);
+ 	}else if(c == Kbel){
+ 		int i;
+ 		if(work == nil)
+ 			return;
+ 		if(which != work){
+ 			current(work);
+ 			return;
+ 		}
+ 		t = (Text*)work->user1;
+ 		l = &t->l[t->front];
+ 		for(i=t->front; t->nwin>1 && (i = (i+1)%NL) != t->front; )
+ 			if(t->l[i].textfn != 0){
+ 				l = &t->l[i];
+ 				break;
+ 			}
+ 		current(l);
 	}else{
 		if(c==Kesc && typeesc>=0){
 			l->p0 = typeesc;
@@ -715,9 +732,8 @@ panic(char *s)
 }
 
 void
-panic1(Display *d, char *s)
+panic1(Display*, char *s)
 {
-	USED(d);
 	fprint(2, "samterm:panic: ");
 	perror(s);
 	abort();

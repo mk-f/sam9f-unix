@@ -1,9 +1,5 @@
 #include "sam.h"
 
-enum {
-	Runemask        = 0x1FFFFF,     /* bits used by runes (see grep) */
-};
-
 Rangeset	sel;
 String		lastregexp;
 /*
@@ -54,6 +50,11 @@ Ilist	*tl, *nl;		/* This list, next list */
 Ilist	list[2][NLIST+1];	/* +1 for trailing null */
 static	Rangeset sempty;
 
+enum {
+	Runemask        = 0x1FFFFF,     /* bits used by runes (see grep) */
+};
+
+
 /*
  * Actions and Tokens
  *
@@ -82,7 +83,6 @@ enum {
 	ISATOR	= OPERATOR,
 	ISAND	= OPERATOR<<1,
 };
-
 /*
  * Parser Information
  */

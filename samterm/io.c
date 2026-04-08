@@ -16,6 +16,7 @@ int	got;
 int	block;
 int	kbdc;
 int	resized;
+int	scrselecting;
 uchar	*hostp;
 uchar	*hoststop;
 uchar	*plumbbase;
@@ -52,6 +53,13 @@ getmouse(void)
 {
 	if(readmouse(mousectl) < 0)
 		panic("mouse");
+}
+
+void
+flushdisplay(void)
+{
+	if(display->bufp > display->buf)
+		flushimage(display, 1);
 }
 
 void
@@ -129,8 +137,8 @@ again:
 
 	if(got & ~block)
 		return got & ~block;
-	if(display->bufp > display->buf)
-		flushimage(display, 1);
+	if(!scrselecting)
+		flushdisplay();
 	type = alt(alts);
 	switch(type){
 	case RHost:
@@ -154,7 +162,7 @@ again:
 		goto again;
 	}
 	got |= 1<<type;
-	return got; 
+	return got;
 }
 
 int
@@ -176,6 +184,67 @@ rcvstring(void)
 	*hoststop = 0;
 	got &= ~(1<<RHost);
 	return (char*)hostp;
+}
+
+/*
+ * when doing consecutive scrolling operations outside of the main loop
+ * in threadmain(), we need to wait for any RHost messages we've sent to
+ * come back from the host.
+ */
+void
+forcenter(Flayer *l, ulong a, int n)
+{
+	Text *t = l->user1;
+
+	flushdisplay();
+	center(l, a, n);
+	if(n > 0 && !t->lock)
+		/* no msg sent */
+		return;
+
+	do{
+		block = ~(1 << RHost);
+		waitforio();
+		rcv();
+	}while(t->lock);
+}
+
+void
+frscroll(Frame *f, int n)
+{
+	Flayer *l = which;
+	Text *t = l->user1;
+
+	if(nbrecv(mousectl->c, &mousectl->m) < 0)
+		return;
+
+	if(n < 0){
+		if(sel > l->origin+f->p0){
+			l->p0 = l->origin+f->p0;
+			l->p1 = sel;
+		}else{
+			l->p0 = sel;
+			l->p1 = l->origin+f->p0;
+		}
+	}else if(n == 0){
+		flushdisplay();
+		sleep(25);
+		return;
+	}else{
+		/* don't scroll off the end */
+		if(l->origin+f->nchars == t->rasp.nrunes)
+			return;
+		if(sel >= l->origin+f->p1){
+			l->p0 = l->origin+f->p1;
+			l->p1 = sel;
+		}else{
+			l->p0 = sel;
+			l->p1 = l->origin+f->p1;
+		}
+	}
+	scrselecting = 1;
+	forcenter(l, l->origin, n);
+	scrselecting = 0;
 }
 
 int

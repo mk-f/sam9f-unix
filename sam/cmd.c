@@ -18,6 +18,7 @@ Cmdtab cmdtab[]={
 	'i',	1,	0,	0,	0,	aDot,	0,	0,	i_cmd,
 	'k',	0,	0,	0,	0,	aDot,	0,	0,	k_cmd,
 	'm',	0,	0,	1,	0,	aDot,	0,	0,	m_cmd,
+	'M',	0,	0,	0,	0,	aNo,	0,	linex,	M_cmd,
 	'n',	0,	0,	0,	0,	aNo,	0,	0,	n_cmd,
 	'p',	0,	0,	0,	0,	aDot,	0,	0,	p_cmd,
 	'q',	0,	0,	0,	0,	aNo,	0,	0,	q_cmd,
@@ -454,7 +455,7 @@ parsecmd(int nest)
 						if(nextc() == 'g')
 							cmd.flag = getch();
 					}
-			
+
 				}
 			}
 		}
@@ -544,7 +545,7 @@ simpleaddr(void)
 		addr.num = getnum(1);
 		break;
 	case '0': case '1': case '2': case '3': case '4':
-	case '5': case '6': case '7': case '8': case '9': 
+	case '5': case '6': case '7': case '8': case '9':
 		addr.num = getnum(1);
 		addr.type='l';
 		break;
