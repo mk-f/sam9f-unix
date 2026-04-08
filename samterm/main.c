@@ -104,13 +104,13 @@ threadmain(int argc, char *argv[])
 						chord &= ~4;
 					}
 				}
-			}else if(mousep->buttons&(1|8) || mousep->buttons&((1|8)<<5)){
+			}else if(mousep->buttons&(1|(1<<5)|8)){
 				if(scr)
 					scroll(which, (mousep->buttons&8) ? 4 : 1);
 				else if(nwhich && nwhich!=which)
 					current(nwhich);
 				else if(nwhich && ptinrect(mousep->xy, which->f.r)){
-					if(mousep->buttons&((1|8)<<5)) /* shifted */
+					if(mousep->buttons&(1<<5)) /* shifted */
 						extendsel(which);
 					else{
 						t = which->user1;
