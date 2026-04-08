@@ -16,7 +16,7 @@ updateenv(File *f)
 	static int fd = -1;
 	int n;
 	char buf[64], *p, *e;
-	
+
 	if(f == nil){
 		putenv("%", "");
 		putenv("%dot", "");
@@ -26,7 +26,7 @@ updateenv(File *f)
 	p = Strtoc(&f->name);
 	putenv("%", p);
 	free(p);
-	
+
 	p = buf;
 	e = buf+sizeof(buf);
 	p = seprint(p, e, "%lud", 1+nlcount(f, 0, f->dot.r.p1));
@@ -34,9 +34,7 @@ updateenv(File *f)
 	p = seprint(p+1, e, "%lud", f->dot.r.p2);
 	n = p - buf;
 	if(fd == -1)
-	if((fd = create("/env/%dot", OWRITE, 0666)) < 0)
-		fprint(2, "updateenv create: %r\n");
-	if(write(fd, buf, n) != n)
+	if(putenv("%dot", buf) < 0)
 		fprint(2, "updateenv write: %r\n");
 }
 
