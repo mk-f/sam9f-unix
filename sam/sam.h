@@ -355,6 +355,7 @@ extern Disk		*disk;
 
 extern char	*rsamname;	/* globals */
 extern char	*samterm;
+extern char	*samrc;
 extern Rune	genbuf[];
 extern char	*genc;
 extern int	io;
@@ -380,6 +381,7 @@ extern String	genstr;
 extern String	lastpat;
 extern String	lastregexp;
 extern String	plan9cmd;
+extern String	*shellinc;
 extern int	downloaded;
 extern int	eof;
 extern int	bpipeok;

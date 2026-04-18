@@ -25,6 +25,7 @@ updateenv(File *f)
 
 	p = Strtoc(&f->name);
 	putenv("%", p);
+	putenv("samfile", p);
 	free(p);
 
 	p = buf;
@@ -45,12 +46,16 @@ plan9(File *f, int type, String *s, int nest)
 	int m;
 	int pid, fd;
 	char *retmsg;
+
 	int pipe1[2], pipe2[2];
 
 	if(s->s[0]==0 && plan9cmd.s[0]==0)
 		error(Enocmd);
-	else if(s->s[0])
+	else if(s->s[0]){
 		Strduplstr(&plan9cmd, s);
+		if(samrc != 0)
+			Strinsert(&plan9cmd, shellinc, (Posn)0);
+	}
 	if(downloaded){
 		samerr(errfile);
 		remove(errfile);

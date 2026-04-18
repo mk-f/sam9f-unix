@@ -7,6 +7,7 @@ int	rescuing;
 String	genstr;
 String	curwd;
 String	cmdstr;
+String	*shellinc;
 Rune	empty[] = { 0 };
 char	*genc;
 File	*curfile;
@@ -20,6 +21,7 @@ int	dflag;
 int	Rflag;
 char	*machine;
 char	*home;
+char	*samrc;
 int	bpipeok;
 int	termlocked;
 char	*samterm = SAMTERM;
@@ -35,6 +37,7 @@ void main(int argc, char *argv[])
 	int i;
 	String *t;
 	char *termargs[10], **ap;
+	char *tc;
 
 	rfork(RFENVG|RFNAMEG);
 
@@ -80,9 +83,15 @@ void main(int argc, char *argv[])
 	Strinit0(&curwd);
 	Strinit0(&plan9cmd);
 	home = getenv(HOME);
+	samrc = getenv("samrc");
 	disk = diskinit();
 	if(home == 0)
 		home = "/";
+	if(samrc != 0){
+		tc = smprint(". %s;", samrc);
+		shellinc = tmpcstr(tc);
+		free(tc);
+	}
 	if(!dflag)
 		startup(machine, Rflag, termargs, argv);
 	notify(notifyf);
