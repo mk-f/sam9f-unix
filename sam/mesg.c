@@ -85,6 +85,8 @@ char *tname[] = {
 	[Tplumb]	"Tplumb",
 	[Tmenucmd]	"Tmenucmd",
 	[Tmenucmdsend]	"Tmenucmdsend",
+	[Tundo]		"Tundo",
+	[Tredo]		"Tredo",
 };
 
 void
@@ -585,6 +587,13 @@ inmesg(Tmesg type)
 		cmd->dot.r.p1 = cmd->dot.r.p2 = cmd->b.nc;
 		telldot(cmd);
 		termcommand();
+		break;
+
+	case Tundo:
+	case Tredo:
+		f = whichfile(inshort());
+		undo(type == Tundo);
+		moveto(f, f->dot.r);
 		break;
 
 	case Texit:

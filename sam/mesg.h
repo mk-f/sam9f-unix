@@ -39,6 +39,8 @@ typedef enum Tmesg
 	Ttclick,	/* triple click */
 	Tmenucmd,	/* list custom cmds in b2 menu */
 	Tmenucmdsend,	/* execute custom cmd from b2 menu */
+	Tundo,
+	Tredo,
 	TMAX,
 }Tmesg;
 /*

@@ -338,6 +338,18 @@ paste(Text *t, int w)
 		outTsl(Tpaste, t->tag, t->l[w].p0);
 	}
 }
+void
+undo(Text *t)
+{
+	outTs(Tundo, t->tag);
+}
+
+void
+redo(Text *t)
+{
+	outTs(Tredo, t->tag);
+}
+
 /*
 // isdigitrune not in p9p
 int
@@ -486,6 +498,15 @@ enum {
 	Ketb=	0x17,
 };
 
+#define	CUT	('x'-0x60)
+#define	COPY	('c'-0x60)
+#define	PASTE	('v'-0x60)
+#define	UNDO    ('z'-0x60)
+#define	REDO	('y'-0x60)
+#define	WRITE	('s'-0x60)
+#define	SEND	('.'-0x20)
+#define	LOOK	('/'-0x20)
+
 int
 nontypingkey(int c)
 {
@@ -505,6 +526,14 @@ nontypingkey(int c)
 	case Kenq:
 	case Kstx:
 	case Kbel:
+	case CUT:
+	case COPY:
+	case PASTE:
+	case UNDO:
+	case REDO:
+	case WRITE:
+	case SEND:
+	case LOOK:
 	case -1:
 		return 1;
 	}
@@ -715,6 +744,40 @@ type(Flayer *l, int res)	/* what a bloody mess this is */
 		for(l=t->l; l<&t->l[NL]; l++)
 			if(l->textfn)
 				flsetselect(l, l->p0, l->p1);
+		switch(c) {
+		case CUT:
+			flushtyping(0);
+			cut(t, t->front, 1, 1);
+			break;
+		case COPY:
+			flushtyping(0);
+			snarf(t, t->front);
+			break;
+		case PASTE:
+			flushtyping(0);
+			paste(t, t->front);
+			break;
+		case UNDO:
+			flushtyping(0);
+			undo(t);
+			break;
+		case REDO:
+			flushtyping(0);
+			redo(t);
+			break;
+		case WRITE:
+			flushtyping(0);
+			outTs(Twrite, t->tag);
+			break;
+		case SEND:
+			flushtyping(0);
+			outTsll(Tsend, 0 /*ignored*/, cmd.l[0].p0, cmd.l[0].p1);
+			break;
+		case LOOK:
+			flushtyping(0);
+			outTsll(Tlook, t->tag, which->p0, which->p1);
+			break;
+		}
 	}
 }
 
