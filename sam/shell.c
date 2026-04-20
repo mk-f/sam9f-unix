@@ -13,9 +13,7 @@ int	cmdbufpos;
 static void
 updateenv(File *f)
 {
-	static int fd = -1;
-	int n;
-	char buf[64], *p, *e;
+	char *p;
 
 	if(f == nil){
 		putenv("%", "");
@@ -28,15 +26,11 @@ updateenv(File *f)
 	putenv("samfile", p);
 	free(p);
 
-	p = buf;
-	e = buf+sizeof(buf);
-	p = seprint(p, e, "%lud", 1+nlcount(f, 0, f->dot.r.p1));
-	p = seprint(p+1, e, "%lud", f->dot.r.p1);
-	p = seprint(p+1, e, "%lud", f->dot.r.p2);
-	n = p - buf;
-	if(fd == -1)
-	if(putenv("%dot", buf) < 0)
-		fprint(2, "updateenv write: %r\n");
+	p = smprint("%lud %lud %lud", 1+nlcount(f, 0, f->dot.r.p1),
+		f->dot.r.p1, f->dot.r.p2);
+	putenv("%dot", p);
+	putenv("samdot", p);
+	free(p);
 }
 
 int
