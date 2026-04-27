@@ -338,17 +338,6 @@ paste(Text *t, int w)
 		outTsl(Tpaste, t->tag, t->l[w].p0);
 	}
 }
-void
-undo(Text *t)
-{
-	outTs(Tundo, t->tag);
-}
-
-void
-redo(Text *t)
-{
-	outTs(Tredo, t->tag);
-}
 
 /*
 // isdigitrune not in p9p
@@ -759,11 +748,11 @@ type(Flayer *l, int res)	/* what a bloody mess this is */
 			break;
 		case UNDO:
 			flushtyping(0);
-			undo(t);
+			outTs(Tundo, t->tag);
 			break;
 		case REDO:
 			flushtyping(0);
-			redo(t);
+			outTs(Tredo, t->tag);
 			break;
 		case WRITE:
 			flushtyping(0);

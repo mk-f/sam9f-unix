@@ -592,6 +592,7 @@ inmesg(Tmesg type)
 	case Tundo:
 	case Tredo:
 		f = whichfile(inshort());
+		current(f);
 		undo(type == Tundo);
 		moveto(f, f->dot.r);
 		break;
